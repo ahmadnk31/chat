@@ -1,12 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Save, Key, User, Bell, Shield, Globe, CreditCard } from 'lucide-react';
 import { getCurrentUser, updateUserSettings, regenerateApiKey, getApiUsage, User as UserType, ApiUsage } from '@/lib/auth';
 import { loadStripe } from '@stripe/stripe-js';
 
-export default function SettingsPage() {
+function SettingsContent() {
   const searchParams = useSearchParams();
   const [settings, setSettings] = useState<UserType | null>(null);
   const [apiUsage, setApiUsage] = useState<ApiUsage | null>(null);
@@ -647,8 +647,7 @@ export default function SettingsPage() {
                       <option value="America/Chicago">Central Time</option>
                       <option value="America/Denver">Mountain Time</option>
                       <option value="America/Los_Angeles">Pacific Time</option>
-                      <option value="Europe/London">London</option>
-                      <option value="Europe/Paris">Paris</option>
+                      <option value="Europe/London">London</option>                  <option value="Europe/Paris">Paris</option>
                       <option value="Asia/Tokyo">Tokyo</option>
                     </select>
                   </div>
@@ -659,5 +658,21 @@ export default function SettingsPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+function SettingsFallback() {
+  return (
+    <div className="flex items-center justify-center min-h-screen">
+      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+    </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={<SettingsFallback />}>
+      <SettingsContent />
+    </Suspense>
   );
 }
