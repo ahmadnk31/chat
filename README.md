@@ -195,4 +195,4 @@ Ensure all environment variables are properly configured:
 
 ## Support
 
-For support and questions, please [create an issue](https://github.com/ahmadnk31/chat/issues) or contact [email](nikzadahmadullah@gmail.com).
+For support and questions, please [create an issue](https://github.com/ahmadnk31/chat/issues) or contact [nikzadahmadullah@gmail.com].
