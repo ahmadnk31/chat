@@ -131,10 +131,10 @@ export async function POST(
         content: true,
         embedding: true,
       },
-    });    // Find relevant context
+    });
+
+    // Find relevant context
     let context = '';
-    console.log(`Found ${chunks.length} total chunks for chatbot ${chatbot.id}`);
-    
     if (chunks.length > 0) {
       const chunksWithEmbeddings = chunks
         .filter(chunk => chunk.embedding)
@@ -143,37 +143,10 @@ export async function POST(
           embedding: chunk.embedding as string,
         }));
 
-      console.log(`${chunksWithEmbeddings.length} chunks have embeddings`);
-
       if (chunksWithEmbeddings.length > 0) {
-        // Try with lower similarity threshold first
-        let relevantChunks = await findRelevantChunks(message, chunksWithEmbeddings, 3, 0.5);
-        console.log(`Found ${relevantChunks.length} relevant chunks with 0.5 threshold`);
-        
-        // If still no results, try even lower threshold
-        if (relevantChunks.length === 0) {
-          relevantChunks = await findRelevantChunks(message, chunksWithEmbeddings, 3, 0.3);
-          console.log(`Found ${relevantChunks.length} relevant chunks with 0.3 threshold`);
-        }
-        
-        // If still no results, use top 3 chunks regardless of similarity
-        if (relevantChunks.length === 0) {
-          relevantChunks = await findRelevantChunks(message, chunksWithEmbeddings, 3, 0.0);
-          console.log(`Using top 3 chunks regardless of similarity: ${relevantChunks.length} chunks`);
-        }
-        
+        const relevantChunks = await findRelevantChunks(message, chunksWithEmbeddings, 3);
         context = relevantChunks.join('\n\n');
-        console.log(`Context length: ${context.length} characters`);
-        console.log(`Context preview: ${context.substring(0, 200)}...`);
-        
-        // If no relevant context found, set a clear message
-        if (relevantChunks.length === 0) {
-          context = "No relevant information found in the knowledge base for this query.";
-        }
       }
-    } else {
-      console.log('No chunks found for this chatbot');
-      context = "No knowledge base content available for this chatbot.";
     }
 
     // Generate AI response

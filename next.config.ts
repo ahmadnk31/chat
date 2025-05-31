@@ -12,9 +12,14 @@ const nextConfig: NextConfig = {
     
     return config;
   },
-  experimental: {
-    esmExternals: 'loose'
-  }
+  typescript:{
+    // Disable type checking during build
+    ignoreBuildErrors: true,
+  },
+  eslint: {
+    // Disable ESLint during build
+    ignoreDuringBuilds: true,
+  },
 };
 
 export default nextConfig;

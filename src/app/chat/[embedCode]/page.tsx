@@ -4,6 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Send, Bot, User, Minimize2, MessageSquare, Search, X } from "lucide-react";
+import MessageRenderer from "@/components/MessageRenderer";
+import TypingAnimation from "@/components/TypingAnimation";
+import TypewriterEffect from "@/components/TypewriterEffect";
 
 interface Message {
   id: string;
@@ -28,11 +31,12 @@ export default function ChatPage() {
   const [loading, setLoading] = useState(false);
   const [sessionId] = useState(() => Math.random().toString(36).substring(7));
   const [isMinimized, setIsMinimized] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);  const [searchLoading, setSearchLoading] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [searchTimeout, setSearchTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [selectedResult, setSelectedResult] = useState<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);const fetchChatbot = useCallback(async () => {
     try {
       const response = await fetch(`/api/chat/${params.embedCode}`);
@@ -64,10 +68,14 @@ export default function ChatPage() {
       }
     };
   }, [searchTimeout]);
-
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  // Scroll to bottom when messages change or when typing completes
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
   const sendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -84,10 +92,8 @@ export default function ChatPage() {
       content: userMessage,
       createdAt: new Date().toISOString()
     };
-    setMessages(prev => [...prev, newUserMessage]);
-
-    try {
-      const response = await fetch(`/api/chatbots/${chatbot.id}/chat`, {
+    setMessages(prev => [...prev, newUserMessage]);    try {
+      const response = await fetch(`/api/chat/${params.embedCode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -126,10 +132,9 @@ export default function ChatPage() {
       setSearchResults([]);
       return;
     }
-    
-    setSearchLoading(true);
+      setSearchLoading(true);
     try {
-      const response = await fetch(`/api/chatbots/${chatbot.id}/chat`, {
+      const response = await fetch(`/api/chat/${params.embedCode}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -190,26 +195,16 @@ export default function ChatPage() {
     }, 300); // 300ms delay for better UX
     
     setSearchTimeout(newTimeout);
+  };  const handleResultClick = (result: any) => {
+    // Show the result details in the modal instead of opening a new page
+    setSelectedResult(result);
   };
-  const handleResultClick = (result: any) => {
-    // Create a URL with the search query and result data
-    const searchParams = new URLSearchParams({
-      query: searchQuery,
-      resultId: result.id,
-      content: result.content,
-      chatbotId: chatbot?.id || '',
-      chatbotName: chatbot?.name || ''
-    });
-      // Navigate to a dedicated search result page
-    const resultUrl = `/search-result?${searchParams.toString()}`;
-    window.open(resultUrl, '_blank');
-  };
-
   const toggleSearchModal = () => {
     if (chatbot?.type === 'DOCS_SEARCH_ENGINE') {      if (!showSearchModal) {
         // Reset search state when opening modal
         setSearchQuery("");
         setSearchResults([]);
+        setSelectedResult(null);
         setIsTyping(false);
         setSearchLoading(false);
         if (searchTimeout) {
@@ -283,36 +278,48 @@ export default function ChatPage() {
                         className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0 ${
                           message.role === 'USER' 
                             ? 'bg-gray-400' 
-                            : 'bg-blue-600'
+                            : ''
                         }`}
+                        style={{
+                          backgroundColor: message.role === 'ASSISTANT' ? chatbot.primaryColor : undefined
+                        }}
                       >
                         {message.role === 'USER' ? <User className="h-4 w-4" /> : <Bot className="h-4 w-4" />}
-                      </div>
-                      <div
-                        className={`px-3 py-2 rounded-lg text-sm ${
+                      </div>                      <div
+                        className={`px-3 py-2 rounded-lg ${
                           message.role === 'USER'
                             ? 'bg-gray-200 text-gray-900'
-                            : 'bg-gray-100 text-gray-900'
+                            : 'text-white'
                         }`}
-                      >
-                        {message.content}
+                        style={{
+                          backgroundColor: message.role === 'ASSISTANT' ? chatbot.primaryColor : undefined
+                        }}
+                      >                        {message.role === 'ASSISTANT' ? (
+                          <TypewriterEffect 
+                            content={message.content} 
+                            role={message.role}
+                            onCharacterTyped={scrollToBottom}
+                          />
+                        ) : (
+                          <MessageRenderer content={message.content} role={message.role} />
+                        )}
                       </div>
                     </div>
                   </div>
                 ))}
-                
-                {loading && (
+                  {loading && (
                   <div className="flex justify-start">
                     <div className="flex items-start space-x-2 max-w-xs">
-                      <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm flex-shrink-0">
+                      <div 
+                        className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm flex-shrink-0"
+                        style={{ backgroundColor: chatbot.primaryColor }}
+                      >
                         <Bot className="h-4 w-4" />
-                      </div>
-                      <div className="px-3 py-2 rounded-lg bg-gray-100 text-gray-900 text-sm">
-                        <div className="flex space-x-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        </div>
+                      </div>                      <div 
+                        className="rounded-lg text-white text-sm"
+                        style={{ backgroundColor: chatbot.primaryColor }}
+                      >
+                        <TypingAnimation primaryColor={chatbot.primaryColor} />
                       </div>
                     </div>
                   </div>
@@ -376,6 +383,7 @@ export default function ChatPage() {
                   setTimeout(() => {
                     setSearchQuery("");
                     setSearchResults([]);
+                    setSelectedResult(null);
                     setIsTyping(false);
                     setSearchLoading(false);
                     if (searchTimeout) {
@@ -413,7 +421,58 @@ export default function ChatPage() {
               )}
             </div>            {/* Search Results */}
             <div className="flex-1 overflow-y-auto">
-              {searchResults.length > 0 ? (
+              {selectedResult ? (
+                /* Selected Result Details */
+                <div className="p-4">
+                  <div className="flex items-center mb-4">
+                    <button
+                      onClick={() => setSelectedResult(null)}
+                      className="flex items-center text-blue-600 hover:text-blue-800 text-sm"
+                    >
+                      ← Back to results
+                    </button>
+                  </div>
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <div className="flex items-center mb-3">
+                      <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full mr-2">
+                        Search Result
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        Query: "{searchQuery}"
+                      </span>
+                    </div>                    <div className="prose prose-sm max-w-none">
+                      <p className="text-gray-800 leading-relaxed whitespace-pre-wrap">
+                        {selectedResult.content}
+                      </p>
+                    </div>
+                    
+                    {/* Action buttons */}
+                    <div className="flex space-x-2 mt-4 pt-4 border-t">
+                      <button
+                        onClick={() => {
+                          // Insert this result into the chat
+                          const userMessage = `I found this in the search: "${selectedResult.content.substring(0, 100)}..." Can you explain this further?`;
+                          setInput(userMessage);
+                          setShowSearchModal(false);
+                          setSelectedResult(null);
+                        }}
+                        className="flex-1 bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors text-sm"
+                      >
+                        Ask about this
+                      </button>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(selectedResult.content);
+                          // You could add a toast notification here
+                        }}
+                        className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm"
+                      >
+                        Copy
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ) : searchResults.length > 0 ? (
                 /* Results List */
                 <div className="p-4">
                   <div className="mb-3">
@@ -422,13 +481,14 @@ export default function ChatPage() {
                     </p>
                   </div>
                   <div className="space-y-3">
-                    {searchResults.map((result, index) => (
-                      <div 
+                    {searchResults.map((result, index) => (                      <div 
                         key={result.id}
-                        className="p-3 border border-gray-200 rounded-lg hover:shadow-md transition-all cursor-pointer hover:border-blue-300"
-                        onClick={() => handleResultClick(result)}
+                        className="p-3 border border-gray-200 rounded-lg hover:shadow-md transition-all"
                       >
-                        <div className="flex items-start justify-between">
+                        <div 
+                          className="flex items-start justify-between cursor-pointer"
+                          onClick={() => handleResultClick(result)}
+                        >
                           <div className="flex-1">
                             <div className="flex items-center mb-2">
                               <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full mr-2">
@@ -450,6 +510,31 @@ export default function ChatPage() {
                           </div>                          <div className="ml-2 text-gray-400">
                             <span className="text-xs">Click to view →</span>
                           </div>
+                        </div>
+                        
+                        {/* Quick actions */}
+                        <div className="flex space-x-2 mt-3 pt-3 border-t border-gray-100">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const userMessage = `I found this in the search: "${result.content.substring(0, 100)}..." Can you explain this further?`;
+                              setInput(userMessage);
+                              setShowSearchModal(false);
+                              setSelectedResult(null);
+                            }}
+                            className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded hover:bg-blue-100 transition-colors"
+                          >
+                            💬 Ask about this
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedResult(result);
+                            }}
+                            className="text-xs bg-gray-50 text-gray-600 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+                          >
+                            📖 View full
+                          </button>
                         </div>
                       </div>
                     ))}
