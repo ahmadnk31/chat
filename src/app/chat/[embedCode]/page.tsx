@@ -4,9 +4,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { Send, Bot, User, Minimize2, MessageSquare, Search, X } from "lucide-react";
-import MessageRenderer from "@/components/MessageRenderer";
+
 import TypingAnimation from "@/components/TypingAnimation";
-import TypewriterEffect from "@/components/TypewriterEffect";
+import MessageRenderer from "@/components/MessageRenderer";
 
 interface Message {
   id: string;
@@ -294,15 +294,7 @@ export default function ChatPage() {
                         style={{
                           backgroundColor: message.role === 'ASSISTANT' ? chatbot.primaryColor : undefined
                         }}
-                      >                        {message.role === 'ASSISTANT' ? (
-                          <TypewriterEffect 
-                            content={message.content} 
-                            role={message.role}
-                            onCharacterTyped={scrollToBottom}
-                          />
-                        ) : (
-                          <MessageRenderer content={message.content} role={message.role} />
-                        )}
+                      >                        <MessageRenderer content={message.content} role={message.role} />
                       </div>
                     </div>
                   </div>
