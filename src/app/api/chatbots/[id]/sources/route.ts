@@ -116,12 +116,10 @@ export async function POST(
           console.error(`Error generating embedding for chunk ${i + 1}:`, embeddingError);
           failedChunks++;
         }
-      }
-
-      console.log(`Embeddings complete: ${successfulChunks} successful, ${failedChunks} failed`);
+      }      console.log(`Embeddings complete: ${successfulChunks} successful, ${failedChunks} failed`);
 
       // Update data source status
-      const finalStatus = failedChunks === 0 ? 'COMPLETED' : 'COMPLETED_WITH_ERRORS';
+      const finalStatus = failedChunks === 0 ? 'COMPLETED' : 'COMPLETED';
       await prisma.dataSource.update({
         where: { id: dataSource.id },
         data: { 
@@ -192,15 +190,13 @@ export async function GET(
         { error: 'Chatbot not found' },
         { status: 404 }
       );
-    }
-
-    // Get all data sources for this chatbot
+    }    // Get all data sources for this chatbot
     const dataSources = await prisma.dataSource.findMany({
       where: { chatbotId: id },
       include: {
         _count: {
           select: {
-            contentChunks: true,
+            chunks: true,
           },
         },
       },
