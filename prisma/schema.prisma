@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Settings
+  apiKey    String   @unique @default(cuid())
+  
+  // Notifications
+  emailNotifications     Boolean @default(true)
+  browserNotifications   Boolean @default(true)
+  marketingNotifications Boolean @default(false)
+  
+  // Security
+  twoFactorEnabled Boolean @default(false)
+  sessionTimeout   Int     @default(30)
+    // Preferences
+  theme     String @default("light")
+  language  String @default("en")
+  timezone  String @default("UTC")
+  
+  // Subscription
+  subscriptionStatus String @default("free") // free, pro, enterprise
+  subscriptionPlan   String @default("free")
+  subscriptionExpiry DateTime?
+  stripeCustomerId   String?
+  stripeSubscriptionId String?
+
+  // User's chatbots
+  chatbots  Chatbot[]
+  
+  @@map("users")
+}
+
+model Chatbot {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  userId      String
+  isPublic    Boolean  @default(false)
+  type        ChatbotType @default(CUSTOMER_SUPPORT)
+  
+  // Customization
+  primaryColor String  @default("#000000")
+  welcomeMessage String @default("Hello! How can I help you today?")
+  placeholder String  @default("Type your message...")
+  
+  // Embedding settings
+  embedCode   String   @unique @default(cuid())
+  
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataSources DataSource[]
+  conversations Conversation[]
+  
+  @@map("chatbots")
+}
+
+model DataSource {
+  id        String   @id @default(cuid())
+  chatbotId String
+  type      DataSourceType
+  name      String
+  url       String?
+  content   String
+  fileKey   String?  // S3 file key for uploaded files
+  fileName  String?  // Original file name
+  fileSize  Int?     // File size in bytes
+  status    ProcessingStatus @default(PENDING)
+  errorMessage String?
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  chatbot   Chatbot  @relation(fields: [chatbotId], references: [id], onDelete: Cascade)
+  chunks    ContentChunk[]
+  
+  @@map("data_sources")
+}
+
+model ContentChunk {
+  id           String   @id @default(cuid())
+  dataSourceId String
+  content      String
+  embedding    String?    // Store vector embeddings as JSON string
+  metadata     String?    // Store additional metadata as JSON string
+  
+  createdAt    DateTime @default(now())
+
+  // Relations
+  dataSource   DataSource @relation(fields: [dataSourceId], references: [id], onDelete: Cascade)
+  
+  @@map("content_chunks")
+}
+
+model Conversation {
+  id        String   @id @default(cuid())
+  chatbotId String
+  sessionId String
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  chatbot   Chatbot  @relation(fields: [chatbotId], references: [id], onDelete: Cascade)
+  messages  Message[]
+  
+  @@map("conversations")
+}
+
+model Message {
+  id             String   @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String
+  
+  createdAt      DateTime @default(now())
+
+  // Relations
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  
+  @@map("messages")
+}
+
+enum DataSourceType {
+  PDF
+  WEBSITE
+  URL
+  TEXT
+}
+
+enum ProcessingStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+enum ChatbotType {
+  CUSTOMER_SUPPORT
+  DOCS_SEARCH_ENGINE
+}

@@ -1,0 +1,5 @@
+-- CreateEnum
+CREATE TYPE "ChatbotType" AS ENUM ('CUSTOMER_SUPPORT', 'DOCS_SEARCH_ENGINE');
+
+-- AlterTable
+ALTER TABLE "chatbots" ADD COLUMN     "type" "ChatbotType" NOT NULL DEFAULT 'CUSTOMER_SUPPORT';
